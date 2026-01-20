@@ -1,6 +1,6 @@
 /* ============================================
    PHONE PARTY GAME - SERVER
-   Node.js + Express + Socket.io
+   Production Ready Version
 ============================================ */
 
 const express = require("express");
@@ -44,7 +44,15 @@ const playerColors = [
 	"#F7DC6F",
 ];
 
-// Get local IP address
+// Get server URL (works for both local and production)
+function getServerURL(req) {
+	// Check if behind proxy (production)
+	const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+	const host = req.headers["x-forwarded-host"] || req.headers.host;
+	return `${protocol}://${host}`;
+}
+
+// Get local IP for development
 function getLocalIP() {
 	const interfaces = os.networkInterfaces();
 	for (const name of Object.keys(interfaces)) {
@@ -59,11 +67,27 @@ function getLocalIP() {
 
 const PORT = process.env.PORT || 3000;
 const LOCAL_IP = getLocalIP();
+const IS_PRODUCTION =
+	process.env.NODE_ENV === "production" ||
+	process.env.RAILWAY_ENVIRONMENT ||
+	process.env.RENDER;
 
-// Generate QR Code
+// Generate QR Code - Dynamic URL
 app.get("/qrcode", async (req, res) => {
 	try {
-		const url = `http://${LOCAL_IP}:${PORT}/controller.html`;
+		let url;
+
+		if (IS_PRODUCTION) {
+			// Production:  use the request host
+			const baseUrl = getServerURL(req);
+			url = `${baseUrl}/controller.html`;
+		} else {
+			// Development: use local IP
+			url = `http://${LOCAL_IP}:${PORT}/controller.html`;
+		}
+
+		console.log("📱 QR Code URL:", url);
+
 		const qrDataUrl = await QRCode.toDataURL(url, {
 			width: 300,
 			margin: 2,
@@ -74,8 +98,14 @@ app.get("/qrcode", async (req, res) => {
 		});
 		res.json({ qr: qrDataUrl, url: url });
 	} catch (err) {
+		console.error("QR Code error:", err);
 		res.status(500).json({ error: err.message });
 	}
+});
+
+// Health check endpoint (untuk Railway/Render)
+app.get("/health", (req, res) => {
+	res.json({ status: "ok", players: gameState.players.size });
 });
 
 // API endpoint for game state
@@ -91,16 +121,14 @@ app.get("/api/state", (req, res) => {
 io.on("connection", (socket) => {
 	console.log(`🔌 New connection: ${socket.id}`);
 
-	// ============================================
-	// PLAYER JOINS - FIXED!
-	// ============================================
+	// Player joins
 	socket.on("player:join", (data) => {
 		console.log("📥 Player join request:", data);
 
 		const playerCount = gameState.players.size;
 
 		if (playerCount >= gameState.settings.maxPlayers) {
-			console.log("❌ Game is full!");
+			console.log("❌ Game is full! ");
 			socket.emit("error", { message: "Game is full!" });
 			return;
 		}
@@ -119,23 +147,23 @@ io.on("connection", (socket) => {
 		gameState.players.set(socket.id, player);
 		socket.join("game");
 
-		console.log("✅ Player created:", player);
+		console.log("✅ Player created:", player.name);
 
-		// *** PENTING: Kirim data player KEMBALI ke client!  ***
+		// Send player data back to client
 		socket.emit("player:joined", player);
 
-		// Broadcast ke display
+		// Broadcast to display
 		io.to("display").emit(
 			"players:update",
 			Array.from(gameState.players.values()),
 		);
 
-		console.log(`🎮 Player joined successfully: ${player.name} (${socket.id})`);
+		console.log(
+			`🎮 Player joined: ${player.name} (Total: ${gameState.players.size})`,
+		);
 	});
 
-	// ============================================
-	// DISPLAY JOINS
-	// ============================================
+	// Display joins
 	socket.on("display:join", () => {
 		socket.join("display");
 		socket.emit("players:update", Array.from(gameState.players.values()));
@@ -146,9 +174,7 @@ io.on("connection", (socket) => {
 		console.log("🖥️ Display connected");
 	});
 
-	// ============================================
-	// PLAYER INPUT (from phone controller)
-	// ============================================
+	// Player input
 	socket.on("player:input", (input) => {
 		const player = gameState.players.get(socket.id);
 		if (player) {
@@ -160,9 +186,7 @@ io.on("connection", (socket) => {
 		}
 	});
 
-	// ============================================
-	// PLAYER TILT (gyroscope)
-	// ============================================
+	// Player tilt
 	socket.on("player:tilt", (tilt) => {
 		const player = gameState.players.get(socket.id);
 		if (player) {
@@ -175,13 +199,10 @@ io.on("connection", (socket) => {
 		}
 	});
 
-	// ============================================
-	// PLAYER ACTION (button press)
-	// ============================================
+	// Player action
 	socket.on("player:action", (action) => {
 		const player = gameState.players.get(socket.id);
 		if (player) {
-			console.log(`🎯 Player ${player.name} action:`, action);
 			io.to("display").emit("player:action", {
 				playerId: socket.id,
 				action: action,
@@ -189,70 +210,52 @@ io.on("connection", (socket) => {
 		}
 	});
 
-	// ============================================
-	// PLAYER READY
-	// ============================================
+	// Player ready
 	socket.on("player:ready", () => {
 		const player = gameState.players.get(socket.id);
 		if (player) {
 			player.isReady = !player.isReady;
-			console.log(`👤 Player ${player.name} ready: ${player.isReady}`);
-
 			io.to("display").emit(
 				"players:update",
 				Array.from(gameState.players.values()),
 			);
 
-			// Check if all players are ready
 			const allReady = Array.from(gameState.players.values()).every(
 				(p) => p.isReady,
 			);
 			if (allReady && gameState.players.size >= 1) {
-				console.log("✅ All players ready!");
 				io.to("display").emit("game:allReady");
 			}
 		}
 	});
 
-	// ============================================
-	// START GAME (from display)
-	// ============================================
+	// Start game
 	socket.on("game:start", (gameType) => {
 		console.log(`🎮 Starting game: ${gameType}`);
 
 		gameState.currentGame = gameType;
 		gameState.gamePhase = "playing";
 
-		// Reset player scores
 		gameState.players.forEach((player) => {
 			player.score = 0;
 			player.position = { x: Math.random() * 800, y: Math.random() * 600 };
 			player.velocity = { x: 0, y: 0 };
 		});
 
-		// Notify everyone
 		io.emit("game:started", {
 			game: gameType,
 			players: Array.from(gameState.players.values()),
 		});
-
-		console.log(`🎯 Game started: ${gameType}`);
 	});
 
-	// ============================================
-	// GAME ENDED
-	// ============================================
+	// Game ended
 	socket.on("game:end", (results) => {
-		console.log("🏁 Game ended");
 		gameState.gamePhase = "results";
 		io.emit("game:ended", results);
 	});
 
-	// ============================================
-	// RETURN TO LOBBY
-	// ============================================
+	// Return to lobby
 	socket.on("game:lobby", () => {
-		console.log("🏠 Returning to lobby");
 		gameState.gamePhase = "lobby";
 		gameState.currentGame = null;
 		gameState.players.forEach((player) => {
@@ -262,9 +265,7 @@ io.on("connection", (socket) => {
 		io.emit("game:toLobby");
 	});
 
-	// ============================================
-	// UPDATE PLAYER SCORE (from display)
-	// ============================================
+	// Update player score
 	socket.on("player:score", (data) => {
 		const player = gameState.players.get(data.playerId);
 		if (player) {
@@ -273,16 +274,12 @@ io.on("connection", (socket) => {
 		}
 	});
 
-	// ============================================
-	// VIBRATE PLAYER'S PHONE
-	// ============================================
+	// Vibrate player's phone
 	socket.on("player:vibrate", (data) => {
 		io.to(data.playerId).emit("vibrate", data.pattern || [100]);
 	});
 
-	// ============================================
-	// DISCONNECT
-	// ============================================
+	// Disconnect
 	socket.on("disconnect", () => {
 		const player = gameState.players.get(socket.id);
 		if (player) {
@@ -292,8 +289,6 @@ io.on("connection", (socket) => {
 				"players:update",
 				Array.from(gameState.players.values()),
 			);
-		} else {
-			console.log(`👋 Connection closed: ${socket.id}`);
 		}
 	});
 });
@@ -305,8 +300,13 @@ server.listen(PORT, "0.0.0.0", () => {
 	console.log("   PHONE PARTY GAME SERVER");
 	console.log("================================");
 	console.log("");
-	console.log(`📺 Display:       http://localhost:${PORT}`);
-	console.log(`📱 Controller:   http://${LOCAL_IP}:${PORT}/controller.html`);
+	if (IS_PRODUCTION) {
+		console.log(`🌐 Running in PRODUCTION mode`);
+		console.log(`📺 Server running on port ${PORT}`);
+	} else {
+		console.log(`📺 Display:      http://localhost:${PORT}`);
+		console.log(`📱 Controller:  http://${LOCAL_IP}:${PORT}/controller.html`);
+	}
 	console.log("");
 	console.log("Scan QR code on the display to join! ");
 	console.log("================================");
