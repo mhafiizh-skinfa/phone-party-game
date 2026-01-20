@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="id">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0"
+		/>
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<title>📱 Controller</title>
+		<link rel="stylesheet" href="css/controller.css" />
+	</head>
+	<body>
+		<div id="app">
+			<!-- Join Screen -->
+			<div id="join-screen" class="screen active">
+				<div class="join-content">
+					<h1>📱 PHONE PARTY</h1>
+					<p>Masukkan nama kamu:</p>
+					<input
+						type="text"
+						id="player-name"
+						placeholder="Nama..."
+						maxlength="12"
+						autocomplete="off"
+					/>
+					<button id="join-btn" class="btn-primary">🎮 GABUNG</button>
+				</div>
+			</div>
+
+			<!-- Lobby/Waiting Screen -->
+			<div id="waiting-screen" class="screen">
+				<div class="waiting-content">
+					<div id="player-avatar" class="player-avatar">👤</div>
+					<h2 id="player-display-name">Player</h2>
+					<p class="waiting-text">Menunggu game dimulai...</p>
+					<button id="ready-btn" class="btn-ready">✋ SIAP</button>
+					<p id="ready-status" class="ready-status"></p>
+				</div>
+			</div>
+
+			<!-- Controller Screen - Tilt Mode -->
+			<div id="controller-tilt" class="screen controller-screen">
+				<div class="controller-header">
+					<span id="tilt-score" class="score">0</span>
+					<span id="tilt-game-name" class="game-name">Tilt Racing</span>
+				</div>
+				<div class="tilt-visual">
+					<div id="tilt-indicator" class="tilt-indicator">
+						<div class="tilt-dot"></div>
+					</div>
+					<p class="tilt-instruction">Miringkan HP untuk kontrol!</p>
+				</div>
+				<button id="tilt-action-btn" class="action-btn">🔥 BOOST</button>
+			</div>
+
+			<!-- Controller Screen - Button Mode -->
+			<div id="controller-buttons" class="screen controller-screen">
+				<div class="controller-header">
+					<span id="btn-score" class="score">0</span>
+					<span id="btn-game-name" class="game-name">Battle</span>
+				</div>
+				<div class="button-controls">
+					<div class="dpad">
+						<button class="dpad-btn up" data-dir="up">▲</button>
+						<button class="dpad-btn left" data-dir="left">◀</button>
+						<button class="dpad-btn right" data-dir="right">▶</button>
+						<button class="dpad-btn down" data-dir="down">▼</button>
+					</div>
+					<div class="action-buttons">
+						<button id="action-a" class="action-btn-round a">A</button>
+						<button id="action-b" class="action-btn-round b">B</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Controller Screen - Quiz Mode -->
+			<div id="controller-quiz" class="screen controller-screen">
+				<div class="controller-header">
+					<span id="quiz-score" class="score">0</span>
+					<span id="quiz-game-name" class="game-name">Quiz</span>
+				</div>
+				<div class="quiz-buttons">
+					<button class="quiz-btn" data-answer="A" style="background: #ff6b6b">
+						A
+					</button>
+					<button class="quiz-btn" data-answer="B" style="background: #4ecdc4">
+						B
+					</button>
+					<button class="quiz-btn" data-answer="C" style="background: #45b7d1">
+						C
+					</button>
+					<button class="quiz-btn" data-answer="D" style="background: #96ceb4">
+						D
+					</button>
+				</div>
+			</div>
+
+			<!-- Results Screen -->
+			<div id="result-screen" class="screen">
+				<div class="result-content">
+					<div id="result-position" class="result-position">🏆</div>
+					<h2 id="result-text">Great Job!</h2>
+					<p id="result-score" class="result-score">Score: 0</p>
+					<p class="waiting-next">Menunggu game selanjutnya...</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Socket.io -->
+		<script src="/socket.io/socket.io.js"></script>
+
+		<!-- Controller Script -->
+		<script src="js/controller.js"></script>
+	</body>
+</html>

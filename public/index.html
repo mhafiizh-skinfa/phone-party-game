@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="id">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>📱 Phone Party Game - Display</title>
+		<link rel="stylesheet" href="css/display.css" />
+	</head>
+	<body>
+		<div id="app">
+			<!-- Lobby Screen -->
+			<div id="lobby-screen" class="screen active">
+				<div class="lobby-header">
+					<h1>📱 PHONE PARTY GAME</h1>
+					<p class="subtitle">Scan QR Code untuk bergabung!</p>
+				</div>
+
+				<div class="lobby-content">
+					<div class="qr-section">
+						<div id="qr-container">
+							<div class="qr-loading">Generating QR...</div>
+						</div>
+						<p id="join-url" class="join-url"></p>
+					</div>
+
+					<div class="players-section">
+						<h2>👥 Players <span id="player-count">(0/8)</span></h2>
+						<div id="players-list" class="players-list">
+							<div class="no-players">Menunggu pemain...</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="game-selection">
+					<h2>🎮 Pilih Game</h2>
+					<div class="game-buttons">
+						<button class="game-btn" data-game="racing" disabled>
+							<span class="game-icon">🏎️</span>
+							<span class="game-name">Tilt Racing</span>
+							<span class="game-desc">Miringkan HP untuk mengemudi! </span>
+						</button>
+						<button class="game-btn" data-game="battle" disabled>
+							<span class="game-icon">⚔️</span>
+							<span class="game-name">Battle Arena</span>
+							<span class="game-desc">Tap untuk menyerang!</span>
+						</button>
+						<button class="game-btn" data-game="quiz" disabled>
+							<span class="game-icon">🧠</span>
+							<span class="game-name">Quick Quiz</span>
+							<span class="game-desc">Jawab tercepat menang!</span>
+						</button>
+					</div>
+				</div>
+
+				<div id="start-section" class="start-section hidden">
+					<p class="ready-status">Semua pemain siap!</p>
+					<button id="start-game-btn" class="start-btn">🚀 MULAI GAME</button>
+				</div>
+			</div>
+
+			<!-- Game Screen -->
+			<div id="game-screen" class="screen">
+				<div id="game-hud" class="game-hud">
+					<div id="game-timer" class="game-timer">60</div>
+					<div id="game-title" class="game-title">Game</div>
+				</div>
+				<canvas id="game-canvas"></canvas>
+				<div id="game-scores" class="game-scores"></div>
+			</div>
+
+			<!-- Results Screen -->
+			<div id="results-screen" class="screen">
+				<div class="results-content">
+					<h1>🏆 HASIL</h1>
+					<div id="results-list" class="results-list"></div>
+					<button id="back-to-lobby" class="back-btn">
+						🏠 Kembali ke Lobby
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Socket.io -->
+		<script src="/socket.io/socket.io.js"></script>
+
+		<!-- Game Scripts -->
+		<script src="js/display.js"></script>
+	</body>
+</html>
