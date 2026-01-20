@@ -1,9 +1,12 @@
 /* ============================================
    PHONE PARTY GAME - CONTROLLER (Phone)
+   FIXED VERSION dengan debugging
 ============================================ */
 
 class PhoneController {
 	constructor() {
+		console.log("🎮 Initializing Phone Controller.. .");
+
 		this.socket = io();
 		this.player = null;
 		this.isReady = false;
@@ -24,6 +27,7 @@ class PhoneController {
 		this.setupSocket();
 		this.setupUI();
 		this.setupTilt();
+		console.log("✅ Controller initialized! ");
 	}
 
 	/* ----------------------------------------
@@ -31,25 +35,33 @@ class PhoneController {
     ---------------------------------------- */
 	setupSocket() {
 		this.socket.on("connect", () => {
-			console.log("Connected to server");
+			console.log("✅ Connected to server with ID:", this.socket.id);
 		});
 
-		this.socket.on("player: joined", (player) => {
+		this.socket.on("disconnect", () => {
+			console.log("❌ Disconnected from server");
+		});
+
+		this.socket.on("player:joined", (player) => {
+			console.log("✅ Player joined:", player);
 			this.player = player;
 			this.showScreen("waiting-screen");
 			this.updatePlayerDisplay();
 		});
 
 		this.socket.on("error", (data) => {
+			console.error("❌ Error:", data);
 			alert(data.message);
 		});
 
 		this.socket.on("game:started", (data) => {
+			console.log("🎮 Game started:", data.game);
 			this.currentGame = data.game;
 			this.showControllerForGame(data.game);
 		});
 
 		this.socket.on("score:update", (score) => {
+			console.log("📊 Score update:", score);
 			this.updateScore(score);
 		});
 
@@ -58,22 +70,16 @@ class PhoneController {
 		});
 
 		this.socket.on("game:ended", (results) => {
+			console.log("🏁 Game ended:", results);
 			this.showResults(results);
 		});
 
 		this.socket.on("game:toLobby", () => {
+			console.log("🏠 Returning to lobby");
 			this.isReady = false;
 			this.currentGame = null;
 			this.showScreen("waiting-screen");
 			this.updateReadyButton();
-		});
-
-		this.socket.on("quiz:question", (data) => {
-			// Quiz question received - buttons are already set up
-		});
-
-		this.socket.on("quiz:feedback", (data) => {
-			this.showQuizFeedback(data);
 		});
 	}
 
@@ -82,30 +88,52 @@ class PhoneController {
     ---------------------------------------- */
 	setupUI() {
 		// Join button
-		document.getElementById("join-btn").addEventListener("click", () => {
-			this.joinGame();
-		});
+		const joinBtn = document.getElementById("join-btn");
+		if (joinBtn) {
+			joinBtn.addEventListener("click", (e) => {
+				e.preventDefault();
+				console.log("🔘 Join button clicked");
+				this.joinGame();
+			});
+		} else {
+			console.error("❌ Join button not found! ");
+		}
 
 		// Enter key on name input
-		document.getElementById("player-name").addEventListener("keypress", (e) => {
-			if (e.key === "Enter") {
-				this.joinGame();
-			}
-		});
+		const nameInput = document.getElementById("player-name");
+		if (nameInput) {
+			nameInput.addEventListener("keypress", (e) => {
+				if (e.key === "Enter") {
+					e.preventDefault();
+					console.log("⌨️ Enter pressed");
+					this.joinGame();
+				}
+			});
+		}
 
 		// Ready button
-		document.getElementById("ready-btn").addEventListener("click", () => {
-			this.toggleReady();
-		});
+		const readyBtn = document.getElementById("ready-btn");
+		if (readyBtn) {
+			readyBtn.addEventListener("click", (e) => {
+				e.preventDefault();
+				console.log("🔘 Ready button clicked");
+				this.toggleReady();
+			});
+		}
 
 		// Tilt action button (boost)
-		document
-			.getElementById("tilt-action-btn")
-			?.addEventListener("touchstart", (e) => {
+		const tiltActionBtn = document.getElementById("tilt-action-btn");
+		if (tiltActionBtn) {
+			tiltActionBtn.addEventListener("touchstart", (e) => {
 				e.preventDefault();
 				this.sendAction({ type: "boost" });
 				this.vibrate([50]);
 			});
+			tiltActionBtn.addEventListener("click", (e) => {
+				e.preventDefault();
+				this.sendAction({ type: "boost" });
+			});
+		}
 
 		// D-pad buttons
 		document.querySelectorAll(".dpad-btn").forEach((btn) => {
@@ -119,20 +147,41 @@ class PhoneController {
 				const dir = btn.dataset.dir;
 				this.handleDpadPress(dir, false);
 			});
+			// Mouse support for testing
+			btn.addEventListener("mousedown", (e) => {
+				const dir = btn.dataset.dir;
+				this.handleDpadPress(dir, true);
+			});
+			btn.addEventListener("mouseup", (e) => {
+				const dir = btn.dataset.dir;
+				this.handleDpadPress(dir, false);
+			});
 		});
 
 		// Action buttons (A, B)
-		document.getElementById("action-a")?.addEventListener("touchstart", (e) => {
-			e.preventDefault();
-			this.sendAction({ type: "attack" });
-			this.vibrate([30]);
-		});
+		const actionA = document.getElementById("action-a");
+		if (actionA) {
+			actionA.addEventListener("touchstart", (e) => {
+				e.preventDefault();
+				this.sendAction({ type: "attack" });
+				this.vibrate([30]);
+			});
+			actionA.addEventListener("click", () => {
+				this.sendAction({ type: "attack" });
+			});
+		}
 
-		document.getElementById("action-b")?.addEventListener("touchstart", (e) => {
-			e.preventDefault();
-			this.sendAction({ type: "special" });
-			this.vibrate([30]);
-		});
+		const actionB = document.getElementById("action-b");
+		if (actionB) {
+			actionB.addEventListener("touchstart", (e) => {
+				e.preventDefault();
+				this.sendAction({ type: "special" });
+				this.vibrate([30]);
+			});
+			actionB.addEventListener("click", () => {
+				this.sendAction({ type: "special" });
+			});
+		}
 
 		// Quiz buttons
 		document.querySelectorAll(".quiz-btn").forEach((btn) => {
@@ -142,6 +191,10 @@ class PhoneController {
 				this.sendAction({ type: "answer", answer: answer });
 				this.vibrate([30]);
 			});
+			btn.addEventListener("click", () => {
+				const answer = btn.dataset.answer;
+				this.sendAction({ type: "answer", answer: answer });
+			});
 		});
 	}
 
@@ -149,16 +202,15 @@ class PhoneController {
        TILT/GYROSCOPE SETUP
     ---------------------------------------- */
 	setupTilt() {
-		// Request permission for iOS 13+
 		if (
 			typeof DeviceOrientationEvent !== "undefined" &&
 			typeof DeviceOrientationEvent.requestPermission === "function"
 		) {
-			// Add a button to request permission
+			// iOS 13+ requires permission
 			document.body.addEventListener(
 				"click",
 				() => {
-					if (!this.isTiltCalibrated) {
+					if (!this.isTiltCalibrated && this.currentGame === "racing") {
 						DeviceOrientationEvent.requestPermission()
 							.then((response) => {
 								if (response === "granted") {
@@ -168,7 +220,7 @@ class PhoneController {
 							.catch(console.error);
 					}
 				},
-				{ once: true },
+				{ once: false },
 			);
 		} else {
 			this.enableTilt();
@@ -177,30 +229,23 @@ class PhoneController {
 
 	enableTilt() {
 		window.addEventListener("deviceorientation", (e) => {
-			if (!this.currentGame) return;
+			if (!this.currentGame || this.currentGame !== "racing") return;
 
-			// Get tilt values
-			let x = e.gamma || 0; // Left/Right tilt (-90 to 90)
-			let y = e.beta || 0; // Front/Back tilt (-180 to 180)
+			let x = e.gamma || 0;
+			let y = e.beta || 0;
 
-			// Calibrate on first reading
 			if (!this.isTiltCalibrated) {
 				this.tiltCalibration = { x, y };
 				this.isTiltCalibrated = true;
 			}
 
-			// Apply calibration
 			x -= this.tiltCalibration.x;
 			y -= this.tiltCalibration.y;
 
-			// Normalize to -1 to 1
 			this.tilt.x = Math.max(-1, Math.min(1, x / 30));
 			this.tilt.y = Math.max(-1, Math.min(1, y / 30));
 
-			// Update visual indicator
 			this.updateTiltIndicator();
-
-			// Send to server
 			this.socket.emit("player:tilt", this.tilt);
 		});
 	}
@@ -219,13 +264,15 @@ class PhoneController {
     ---------------------------------------- */
 	joinGame() {
 		const nameInput = document.getElementById("player-name");
-		const name = nameInput.value.trim() || "Player";
+		const name = nameInput ? nameInput.value.trim() : "Player";
 
-		this.socket.emit("player:join", { name });
+		console.log("📤 Sending player: join with name:", name || "Player");
+		this.socket.emit("player:join", { name: name || "Player" });
 	}
 
 	toggleReady() {
 		this.isReady = !this.isReady;
+		console.log("📤 Sending player:ready, isReady:", this.isReady);
 		this.socket.emit("player:ready");
 		this.updateReadyButton();
 	}
@@ -234,14 +281,16 @@ class PhoneController {
 		const btn = document.getElementById("ready-btn");
 		const status = document.getElementById("ready-status");
 
+		if (!btn) return;
+
 		if (this.isReady) {
 			btn.classList.add("ready");
 			btn.textContent = "✅ SIAP!";
-			status.textContent = "Menunggu pemain lain... ";
+			if (status) status.textContent = "Menunggu pemain lain...";
 		} else {
 			btn.classList.remove("ready");
 			btn.textContent = "✋ SIAP";
-			status.textContent = "";
+			if (status) status.textContent = "";
 		}
 	}
 
@@ -264,6 +313,7 @@ class PhoneController {
 	}
 
 	sendAction(action) {
+		console.log("📤 Sending action:", action);
 		this.socket.emit("player:action", action);
 	}
 
@@ -271,93 +321,101 @@ class PhoneController {
        UI UPDATES
     ---------------------------------------- */
 	showScreen(screenId) {
-		document
-			.querySelectorAll(".screen")
-			.forEach((s) => s.classList.remove("active"));
-		document.getElementById(screenId).classList.add("active");
-	}
+		console.log("📺 Showing screen:", screenId);
 
-	updatePlayerDisplay() {
-		if (!this.player) return;
+		const screens = document.querySelectorAll(".screen");
+		screens.forEach((s) => {
+			s.classList.remove("active");
+		});
 
-		// Update avatar
-		const avatar = document.getElementById("player-avatar");
-		avatar.textContent = this.player.name.charAt(0).toUpperCase();
-		avatar.style.borderColor = this.player.color;
-		avatar.style.background = this.player.color + "40";
-
-		// Update name
-		document.getElementById("player-display-name").textContent =
-			this.player.name;
-	}
-
-	showControllerForGame(gameType) {
-		// Hide all controller screens first
-		document
-			.querySelectorAll(".controller-screen")
-			.forEach((s) => s.classList.remove("active"));
-
-		switch (gameType) {
-			case "racing":
-				this.showScreen("controller-tilt");
-				// Reset calibration for new game
-				this.isTiltCalibrated = false;
-				break;
-			case "battle":
-				this.showScreen("controller-buttons");
-				break;
-			case "quiz":
-				this.showScreen("controller-quiz");
-				break;
-			default:
-				this.showScreen("controller-tilt");
+		const targetScreen = document.getElementById(screenId);
+		if (targetScreen) {
+			targetScreen.classList.add("active");
+			console.log("✅ Screen shown:", screenId);
+		} else {
+			console.error("❌ Screen not found:", screenId);
 		}
 	}
 
+	updatePlayerDisplay() {
+		if (!this.player) {
+			console.log("⚠️ No player data to display");
+			return;
+		}
+
+		console.log("👤 Updating player display:", this.player);
+
+		const avatar = document.getElementById("player-avatar");
+		if (avatar) {
+			avatar.textContent = this.player.name.charAt(0).toUpperCase();
+			avatar.style.borderColor = this.player.color;
+			avatar.style.background = this.player.color + "40";
+		}
+
+		const displayName = document.getElementById("player-display-name");
+		if (displayName) {
+			displayName.textContent = this.player.name;
+		}
+	}
+
+	showControllerForGame(gameType) {
+		console.log("🎮 Showing controller for game:", gameType);
+
+		document.querySelectorAll(".controller-screen").forEach((s) => {
+			s.classList.remove("active");
+		});
+
+		let screenId;
+		switch (gameType) {
+			case "racing":
+				screenId = "controller-tilt";
+				this.isTiltCalibrated = false;
+				break;
+			case "battle":
+				screenId = "controller-buttons";
+				break;
+			case "quiz":
+				screenId = "controller-quiz";
+				break;
+			default:
+				screenId = "controller-tilt";
+		}
+
+		this.showScreen(screenId);
+	}
+
 	updateScore(score) {
-		// Update score on all controller screens
 		document.querySelectorAll(".score").forEach((el) => {
 			el.textContent = score;
 		});
 	}
 
-	showQuizFeedback(data) {
-		const buttons = document.querySelectorAll(".quiz-btn");
-		buttons.forEach((btn) => {
-			btn.classList.remove("correct", "wrong");
-			if (btn.dataset.answer === data.correctAnswer) {
-				btn.classList.add("correct");
-			} else if (btn.dataset.answer === data.yourAnswer && !data.isCorrect) {
-				btn.classList.add("wrong");
-			}
-		});
-
-		// Reset after animation
-		setTimeout(() => {
-			buttons.forEach((btn) => btn.classList.remove("correct", "wrong"));
-		}, 1000);
-	}
-
 	showResults(results) {
 		this.showScreen("result-screen");
 
-		// Find this player's result
-		const myResult = results.find((r) => r.id === this.player?.id);
-		const position = results.findIndex((r) => r.id === this.player?.id) + 1;
+		if (!this.player) return;
 
-		// Update display
+		const myResult = results.find((r) => r.id === this.player.id);
+		const position = results.findIndex((r) => r.id === this.player.id) + 1;
+
 		const positionEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣"];
-		document.getElementById("result-position").textContent =
-			positionEmojis[position - 1] || position;
+
+		const positionEl = document.getElementById("result-position");
+		if (positionEl) {
+			positionEl.textContent = positionEmojis[position - 1] || position;
+		}
 
 		const resultTexts = ["JUARA 1! ", "JUARA 2!", "JUARA 3!", "Good Game!"];
-		document.getElementById("result-text").textContent =
-			resultTexts[position - 1] || "Good Game!";
+		const textEl = document.getElementById("result-text");
+		if (textEl) {
+			textEl.textContent = resultTexts[position - 1] || "Good Game!";
+		}
 
-		document.getElementById("result-score").textContent =
-			`Score: ${myResult?.score || 0}`;
+		const scoreEl = document.getElementById("result-score");
+		if (scoreEl) {
+			scoreEl.textContent = `Score: ${myResult?.score || 0}`;
+		}
 
-		// Vibrate based on position
 		if (position === 1) {
 			this.vibrate([100, 50, 100, 50, 100]);
 		} else if (position <= 3) {
@@ -374,5 +432,6 @@ class PhoneController {
 
 // Initialize controller when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
+	console.log("📱 DOM Loaded - Starting Phone Controller...");
 	window.controller = new PhoneController();
 });
